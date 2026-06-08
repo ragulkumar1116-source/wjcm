@@ -11,14 +11,14 @@
  */
 
 const FIREBASE_CONFIG = {
-    apiKey: "AIzaSyDIiBdSKMigymz8P4PooMSguP7LoLKvllg",
-  authDomain: "hotel-c4382.firebaseapp.com",
-  databaseURL: "https://hotel-c4382-default-rtdb.firebaseio.com",
-  projectId: "hotel-c4382",
-  storageBucket: "hotel-c4382.firebasestorage.app",
-  messagingSenderId: "879811080075",
-  appId: "1:879811080075:web:656ac50faffced4aee898e",
-  measurementId: "G-EGS10RS2V4"
+     apiKey: "AIzaSyBAaXVxwpkLx1bKXaBp1vbAGQBLf19rRck",
+  authDomain: "church-youth-manager-8a895.firebaseapp.com",
+  databaseURL: "https://church-youth-manager-8a895-default-rtdb.firebaseio.com",
+  projectId: "church-youth-manager-8a895",
+  storageBucket: "church-youth-manager-8a895.firebasestorage.app",
+  messagingSenderId: "829854911697",
+  appId: "1:829854911697:web:3df4bf5ea2e4b71eb409f0",
+  measurementId: "G-DNW67R5P92"
 };
 
 // Firebase Database Reference Keys
