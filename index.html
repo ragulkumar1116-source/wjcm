@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0f2440" />
+  <meta name="description" content="Church Youth Collection Manager - Track monthly contributions" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Youth CM" />
+  <title>Church Youth Collection Manager</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Firebase SDK (optional - works without it) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js" defer></script>
+</head>
+<body>
+
+<!-- ============================================================
+     TOAST CONTAINER
+     ============================================================ -->
+<div id="toastContainer"></div>
+
+<!-- ============================================================
+     APP WRAPPER
+     ============================================================ -->
+<div class="app-wrapper">
+
+  <!-- ======================================================
+       SIDEBAR NAVIGATION
+       ====================================================== -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon" id="sidebarLogoContainer">⛪</div>
+        <div>
+          <div class="sidebar-title" id="churchNameDisplay">Church Youth</div>
+          <div class="sidebar-subtitle">Collection Manager</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <div class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">📊</span>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="members">
+        <span class="nav-icon">👥</span>
+        <span>Members</span>
+      </div>
+      <div class="nav-item" data-page="collections">
+        <span class="nav-icon">💰</span>
+        <span>Collections</span>
+      </div>
+      <div class="nav-item" data-page="reports">
+        <span class="nav-icon">📋</span>
+        <span>Reports</span>
+      </div>
+      <div class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙️</span>
+        <span>Settings</span>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div id="onlineIndicator" class="status-online">
+        <span class="dot"></span> Online
+      </div>
+      <button class="logout-btn" onclick="handleLogout()">🔐 Lock App</button>
+    </div>
+  </aside>
+
+  <!-- ======================================================
+       MAIN CONTENT
+       ====================================================== -->
+  <div class="main-content">
+
+    <!-- Top Header -->
+    <header class="top-header">
+      <button id="hamburger">☰</button>
+      <div class="header-church-name" id="headerChurchName">⛪ Youth Collection Manager</div>
+      <div class="header-right">
+        <button class="btn btn-sm btn-accent" onclick="showPage('collections'); setTimeout(openAddCollection, 100)">+ Record</button>
+      </div>
+    </header>
+
+    <!-- Page Container -->
+    <main class="page-container">
+
+      <!-- ====================================================
+           PAGE: DASHBOARD
+           ==================================================== -->
+      <div id="page-dashboard" class="page active">
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle" id="dashCurrentMonth">Loading...</div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+          <div class="stat-card accent-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-value" id="dashTotalMembers">0</div>
+            <div class="stat-label">Active Members</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-value" id="dashMonthlyTarget">₹0</div>
+            <div class="stat-label">Monthly Target</div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value" id="dashCollected">₹0</div>
+            <div class="stat-label">Collected</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-icon">⏳</div>
+            <div class="stat-value" id="dashPending">₹0</div>
+            <div class="stat-label">Pending</div>
+          </div>
+          <div class="stat-card warning">
+            <div class="stat-icon">📈</div>
+            <div class="stat-value" id="dashAchievement">0%</div>
+            <div class="stat-label">Achievement</div>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-container">
+          <div class="progress-header">
+            <span class="progress-title">Monthly Collection Progress</span>
+            <span class="progress-pct" id="dashAchievementPct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="dashProgressBar" style="width:0%"></div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-card">
+          <div class="chart-card-title">📊 6-Month Collection Trend</div>
+          <canvas id="trendChart" height="160"></canvas>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dash-grid">
+          <div class="dash-panel">
+            <div class="dash-panel-title">🏆 Top Contributors</div>
+            <div id="topContributors">
+              <p class="text-muted text-center" style="font-size:0.82rem; padding:1rem 0;">No contributions yet this month</p>
+            </div>
+          </div>
+          <div class="dash-panel">
+            <div class="dash-panel-title">🕐 Recent Activity</div>
+            <div id="recentActivity">
+              <p class="text-muted text-center" style="font-size:0.82rem; padding:1rem 0;">No recent activity</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="dash-panel" style="margin-bottom:1rem;">
+          <div class="dash-panel-title">⚡ Quick Actions</div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.5rem;">
+            <button class="btn btn-primary" onclick="showPage('members'); setTimeout(openAddMember, 100)">👤 Add Member</button>
+            <button class="btn btn-accent" onclick="showPage('collections'); setTimeout(openAddCollection, 100)">💰 Record Payment</button>
+            <button class="btn btn-secondary" onclick="showPage('reports')">📋 View Reports</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====================================================
+           PAGE: MEMBERS
+           ==================================================== -->
+      <div id="page-members" class="page">
+        <div class="page-title">Members</div>
+
+        <!-- Mini Stats -->
+        <div class="member-stats-row">
+          <div class="member-stat-mini">
+            <div class="val" id="memberCount">0</div>
+            <div class="lbl">Total</div>
+          </div>
+          <div class="member-stat-mini">
+            <div class="val" style="color:var(--success)" id="activeCount">0</div>
+            <div class="lbl">Active</div>
+          </div>
+          <div class="member-stat-mini">
+            <div class="val" style="color:var(--danger)" id="inactiveCount">0</div>
+            <div class="lbl">Inactive</div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="page-toolbar">
+          <div class="search-box">
+            <input type="text" placeholder="Search by name, ID, area..." oninput="searchMembers(this.value)" />
+          </div>
+          <button class="btn btn-primary" onclick="openAddMember()">+ Add</button>
+        </div>
+
+        <!-- Filter -->
+        <div class="filter-row">
+          <button class="filter-btn active" onclick="filterMembers('All')">All</button>
+          <button class="filter-btn" onclick="filterMembers('Active')">Active</button>
+          <button class="filter-btn" onclick="filterMembers('Inactive')">Inactive</button>
+        </div>
+
+        <!-- List -->
+        <div id="membersList"></div>
+      </div>
+
+      <!-- ====================================================
+           PAGE: COLLECTIONS
+           ==================================================== -->
+      <div id="page-collections" class="page">
+        <div class="page-title">Collections</div>
+
+        <!-- Summary Bar -->
+        <div class="collection-summary-bar">
+          <div class="collection-summary-header">
+            <span class="collection-summary-title">Current Period</span>
+            <span class="collection-summary-month" id="colSummaryMonth">-</span>
+          </div>
+          <div class="col-summary-grid">
+            <div class="col-summary-item">
+              <div class="col-summary-val" id="colSummaryTarget">₹0</div>
+              <div class="col-summary-lbl">Target</div>
+            </div>
+            <div class="col-summary-item">
+              <div class="col-summary-val" id="colSummaryCollected">₹0</div>
+              <div class="col-summary-lbl">Collected</div>
+            </div>
+            <div class="col-summary-item">
+              <div class="col-summary-val" id="colSummaryPending">₹0</div>
+              <div class="col-summary-lbl">Pending</div>
+            </div>
+            <div class="col-summary-item">
+              <div class="col-summary-val" id="colSummaryCompleted">0/0</div>
+              <div class="col-summary-lbl">Completed</div>
+            </div>
+          </div>
+          <div class="col-progress-track">
+            <div class="col-progress-fill" id="colSummaryProgress" style="width:0%"></div>
+          </div>
+          <div style="text-align:right; font-size:0.75rem; opacity:0.8; margin-top:3px;" id="colSummaryPct">0%</div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="page-toolbar">
+          <div class="search-box">
+            <input type="text" placeholder="Search member, month..." oninput="searchCollections(this.value)" />
+          </div>
+          <button class="btn btn-primary" onclick="openAddCollection()">+ Add</button>
+        </div>
+
+        <!-- Filters -->
+        <div class="page-toolbar" style="gap:0.5rem;">
+          <select class="form-control" id="collectionMonthFilter" onchange="filterCollectionMonth(this.value)" style="flex:1; padding:0.5rem 0.75rem;">
+            <option value="">All Months</option>
+          </select>
+          <select class="form-control" id="collectionYearFilter" onchange="filterCollectionYear(this.value)" style="width:110px; padding:0.5rem 0.75rem;">
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+          </select>
+        </div>
+
+        <!-- List -->
+        <div id="collectionsList"></div>
+      </div>
+
+      <!-- ====================================================
+           PAGE: REPORTS
+           ==================================================== -->
+      <div id="page-reports" class="page">
+        <div class="page-title">Reports</div>
+
+        <!-- Controls -->
+        <div class="page-toolbar">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <label style="font-size:0.85rem; font-weight:600; color:var(--text-muted);">Year:</label>
+            <select class="form-control" id="reportYearSel" onchange="setReportYear(this.value)" style="width:100px; padding:0.5rem 0.75rem;">
+              <option value="2023">2023</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026" selected>2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="printReport()">🖨️ Print</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchReport('monthly')">Monthly Report</button>
+          <button class="tab-btn" onclick="switchReport('yearly')">Yearly Overview</button>
+        </div>
+
+        <!-- Report Content -->
+        <div id="reportContent"></div>
+      </div>
+
+      <!-- ====================================================
+           PAGE: SETTINGS
+           ==================================================== -->
+      <div id="page-settings" class="page">
+        <div class="page-title">Settings</div>
+        <div class="page-subtitle">Configure your app preferences</div>
+
+        <!-- Church Info -->
+        <div class="settings-section">
+          <div class="settings-section-title">⛪ Church Information</div>
+          <div class="form-group">
+            <label class="form-label">Church / Group Name</label>
+            <input type="text" class="form-control" id="settingsChurchName" placeholder="Enter church name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Church Logo</label>
+            <img id="logoPreview" src="" alt="Logo" />
+            <input type="file" accept="image/*" onchange="handleLogoUpload(this)" class="form-control" style="font-size:0.82rem;" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Financial Year</label>
+              <input type="number" class="form-control" id="settingsFinancialYear" min="2020" max="2099" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Currency Symbol</label>
+              <input type="text" class="form-control" id="settingsCurrency" maxlength="3" placeholder="₹" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Monthly Target (₹)</label>
+            <input type="number" class="form-control" id="settingsMonthlyTarget" min="1" />
+          </div>
+        </div>
+
+        <!-- Security -->
+        <div class="settings-section">
+          <div class="settings-section-title">🔐 Security</div>
+          <div class="form-group">
+            <label class="form-label">Admin PIN (min 4 digits)</label>
+            <input type="password" class="form-control" id="settingsAdminPin" maxlength="8" placeholder="Enter new PIN" />
+            <small style="color:var(--text-muted); font-size:0.75rem;">Default PIN: 1234</small>
+          </div>
+        </div>
+
+        <!-- Firebase -->
+        <div class="settings-section">
+          <div class="settings-section-title">☁️ Firebase Sync</div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            To enable cloud sync, update <code>firebase/firebase-config.js</code> with your Firebase project credentials.
+          </p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="syncFromFirebase(); showToast('Syncing...', 'info')">🔄 Sync Now</button>
+          </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="settings-section">
+          <div class="settings-section-title">💾 Data Management</div>
+          <div class="data-actions">
+            <button class="btn btn-secondary btn-sm" onclick="exportData()">⬇️ Export Backup</button>
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer;">
+              ⬆️ Import Backup
+              <input type="file" accept=".json" onchange="importData(this)" style="display:none;" />
+            </label>
+          </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="settings-section danger-zone">
+          <div class="settings-section-title" style="color:var(--danger);">⚠️ Danger Zone</div>
+          <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">Permanently delete all data. This cannot be undone.</p>
+          <button class="btn btn-danger btn-sm" onclick="clearAppData()">🗑️ Clear All Data</button>
+        </div>
+
+        <!-- Save -->
+        <button class="btn btn-primary btn-full" style="margin-top:1rem;" onclick="saveSettingsForm()">💾 Save Settings</button>
+      </div>
+
+    </main><!-- /page-container -->
+  </div><!-- /main-content -->
+</div><!-- /app-wrapper -->
+
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- Login Modal -->
+<div id="loginModal" class="modal" style="align-items:center; justify-content:center;">
+  <div class="login-modal-box">
+    <div class="login-icon">⛪</div>
+    <div class="login-title">Youth Collection Manager</div>
+    <div class="login-subtitle">Enter your PIN to continue</div>
+    <div class="form-group">
+      <input type="password" class="form-control pin-input" id="loginPin" maxlength="8"
+        placeholder="••••"
+        onkeydown="if(event.key==='Enter') handleLogin()" />
+    </div>
+    <button class="btn btn-primary btn-full" onclick="handleLogin()">🔓 Unlock</button>
+    <p style="margin-top:0.75rem; font-size:0.75rem; color:var(--text-muted);">Default PIN: 1234</p>
+  </div>
+</div>
+
+<!-- Add/Edit Member Modal -->
+<div id="memberModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="memberModalTitle">Add Member</span>
+      <button class="modal-close" onclick="closeModal('memberModal')">✕</button>
+    </div>
+    <form id="memberForm" onsubmit="event.preventDefault(); saveMember()">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Member ID</label>
+          <input type="text" class="form-control" id="memberId" readonly style="background:var(--bg); font-family:var(--mono);" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="memberStatus">
+            <option>Active</option>
+            <option>Inactive</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Name *</label>
+        <input type="text" class="form-control" id="memberName" placeholder="Enter full name" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Mobile Number</label>
+          <input type="tel" class="form-control" id="memberMobile" placeholder="e.g. 9876543210" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area / Location</label>
+          <input type="text" class="form-control" id="memberArea" placeholder="e.g. North Zone" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Monthly Contribution Amount (₹) *</label>
+        <input type="number" class="form-control" id="memberMonthlyAmount" placeholder="e.g. 100" min="1" required />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('memberModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex:1">💾 Save Member</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Add/Edit Collection Modal -->
+<div id="collectionModal" class="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" id="collectionModalTitle">Add Collection</span>
+      <button class="modal-close" onclick="closeModal('collectionModal')">✕</button>
+    </div>
+    <form id="collectionForm" onsubmit="event.preventDefault(); saveCollection()">
+      <div class="form-group">
+        <label class="form-label">Member *</label>
+        <select class="form-control" id="collectionMember" onchange="updateCollectionTarget()" required>
+          <option value="">-- Select Member --</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Month *</label>
+          <select class="form-control" id="collectionMonth" onchange="updateCollectionTarget()" required>
+            <option value="">-- Month --</option>
+            <option>January</option><option>February</option><option>March</option>
+            <option>April</option><option>May</option><option>June</option>
+            <option>July</option><option>August</option><option>September</option>
+            <option>October</option><option>November</option><option>December</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Year *</label>
+          <select class="form-control" id="collectionYear" onchange="updateCollectionTarget()" required>
+            <option>2024</option>
+            <option>2025</option>
+            <option selected>2026</option>
+            <option>2027</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Target Info -->
+      <div id="collectionTargetInfo"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount Paid (₹) *</label>
+          <input type="number" class="form-control" id="collectionAmount" placeholder="Enter amount" min="1" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Collection Date *</label>
+          <input type="date" class="form-control" id="collectionDate" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Remarks (optional)</label>
+        <input type="text" class="form-control" id="collectionRemarks" placeholder="Any notes..." />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('collectionModal')">Cancel</button>
+        <button type="submit" class="btn btn-accent" style="flex:1">💾 Save Collection</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Member Profile Modal -->
+<div id="profileModal" class="modal">
+  <div class="modal-box" style="max-width:640px;">
+    <div class="modal-header">
+      <span class="modal-title">Member Profile</span>
+      <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+    </div>
+    <div id="profileContent"></div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="modal" style="align-items:center; justify-content:center;">
+  <div class="modal-box modal-center" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">⚠️ Confirm Action</span>
+      <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    </div>
+    <p id="confirmMessage" style="font-size:0.9rem; color:var(--text-muted); margin-bottom:1.25rem;"></p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('confirmModal')">Cancel</button>
+      <button id="confirmBtn" class="btn btn-danger" style="flex:1">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
+<script src="firebase/firebase-config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/members.js"></script>
+<script src="js/collections.js"></script>
+<script src="js/reports.js"></script>
+
+<!-- Service Worker Registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then(() => {
+        console.log('✅ Service Worker registered');
+      }).catch(e => console.warn('SW registration failed:', e));
+    });
+  }
+
+  // Update achievement display in dashboard
+  document.addEventListener('DOMContentLoaded', () => {
+    // Sync achievement % to dual elements
+    setInterval(() => {
+      const pct = document.getElementById('dashAchievement');
+      const pctBar = document.getElementById('dashAchievementPct');
+      if (pct && pctBar) pctBar.textContent = pct.textContent;
+    }, 500);
+  });
+</script>
+
+</body>
+</html>
