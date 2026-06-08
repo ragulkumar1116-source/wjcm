@@ -18,7 +18,6 @@ const FIREBASE_CONFIG = {
   storageBucket: "church-youth-manager-8a895.firebasestorage.app",
   messagingSenderId: "829854911697",
   appId: "1:829854911697:web:3df4bf5ea2e4b71eb409f0",
-  measurementId: "G-DNW67R5P92"
 };
 
 // Firebase Database Reference Keys
