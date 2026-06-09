@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Church Youth Collection Manager – Login</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="auth-page">
+  <!-- Left branding panel -->
+  <div class="auth-left">
+    <div class="auth-brand">
+      <div class="logo-icon">✝</div>
+      <h1>Youth Collection<br>Manager</h1>
+      <p>Church Finance Management System</p>
+    </div>
+    <ul class="auth-features">
+      <li><span class="ico">📴</span> Works fully offline – saves locally</li>
+      <li><span class="ico">☁️</span> Auto-syncs to cloud when online</li>
+      <li><span class="ico">📊</span> Real-time dashboard & reports</li>
+      <li><span class="ico">👥</span> Multi-role: Admin, Collector, Viewer</li>
+      <li><span class="ico">📱</span> Mobile friendly on any device</li>
+    </ul>
+  </div>
+
+  <!-- Right login form -->
+  <div class="auth-right">
+    <div class="auth-card">
+      <h2>Welcome back 🙏</h2>
+      <p class="sub">Sign in to your church account</p>
+
+      <div id="login-alert" class="alert alert-danger"></div>
+      <div id="reset-alert" class="alert alert-success"></div>
+
+      <!-- Login form -->
+      <div id="login-form">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input id="email" type="email" class="form-control" placeholder="admin@church.org" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input id="password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--slate);">
+            <input type="checkbox" id="remember"> Remember me
+          </label>
+          <a href="#" onclick="showReset()" style="font-size:.83rem;color:var(--gold);font-weight:600;text-decoration:none;">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="doLogin()">
+          <span>Sign In</span>
+          <span id="login-spinner" style="display:none">⏳</span>
+        </button>
+      </div>
+
+      <!-- Password reset -->
+      <div id="reset-form" style="display:none">
+        <p style="font-size:.85rem;color:var(--slate);margin-bottom:1.2rem;">Enter your email and we'll send a password reset link.</p>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input id="reset-email" type="email" class="form-control" placeholder="admin@church.org">
+        </div>
+        <div style="display:flex;gap:.7rem;">
+          <button class="btn btn-primary" style="flex:1" onclick="doReset()">Send Reset Link</button>
+          <button class="btn btn-outline" onclick="showLogin()">Back</button>
+        </div>
+      </div>
+
+      <p style="margin-top:1.5rem;font-size:.78rem;color:var(--muted);text-align:center;">
+        Contact your church administrator to create an account.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script>
+function showReset() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('login-form').style.display = 'block';
+}
+
+function showAlert(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideAlerts() {
+  document.querySelectorAll('.alert').forEach(e => e.classList.remove('show'));
+}
+
+async function doLogin() {
+  hideAlerts();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const remember = document.getElementById('remember').checked;
+  if (!email || !password) { showAlert('login-alert','Please enter email and password.'); return; }
+
+  document.getElementById('login-spinner').style.display = 'inline';
+  try {
+    const persist = remember
+      ? firebase.auth.Auth.Persistence.LOCAL
+      : firebase.auth.Auth.Persistence.SESSION;
+    await auth.setPersistence(persist);
+    await auth.signInWithEmailAndPassword(email, password);
+    window.location.href = 'dashboard.html';
+  } catch (e) {
+    showAlert('login-alert', friendlyError(e.code));
+  } finally {
+    document.getElementById('login-spinner').style.display = 'none';
+  }
+}
+
+async function doReset() {
+  hideAlerts();
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) { showAlert('login-alert','Enter your email address.'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    showAlert('reset-alert','✓ Reset link sent! Check your email.');
+  } catch (e) {
+    showAlert('login-alert', friendlyError(e.code));
+  }
+}
+
+function friendlyError(code) {
+  const map = {
+    'auth/user-not-found':'No account found with that email.',
+    'auth/wrong-password':'Incorrect password. Please try again.',
+    'auth/invalid-email':'Please enter a valid email address.',
+    'auth/too-many-requests':'Too many attempts. Please wait and retry.',
+    'auth/network-request-failed':'Network error. Check your connection.',
+  };
+  return map[code] || 'An error occurred. Please try again.';
+}
+
+// If already logged in, redirect
+auth.onAuthStateChanged(u => { if (u) window.location.href = 'dashboard.html'; });
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (document.getElementById('login-form').style.display !== 'none') doLogin();
+    else doReset();
+  }
+});
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(r => console.log('SW registered'))
+      .catch(e => console.warn('SW registration failed:', e));
+  });
+}
+</script>
+</body>
+</html>

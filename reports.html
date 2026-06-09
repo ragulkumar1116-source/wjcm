@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports – Church Youth Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script src="js/1sync.js"></script>
+<script src="js/1app.js"></script>
+<script src="js/1layout.js"></script>
+<script>
+App.requireAuth(({ churchId, role, settings }) => {
+  renderLayout('Reports');
+
+  const cid  = churchId;
+  const body = document.getElementById('page-body');
+  const yr   = App.currentYear();
+
+  body.innerHTML = `
+    <!-- Controls -->
+    <div class="toolbar no-print" style="margin-bottom:1.2rem">
+      <select id="rep-type" class="form-control" style="width:auto" onchange="buildReport()">
+        <option value="monthly">Monthly Report</option>
+        <option value="yearly">Yearly Report</option>
+        <option value="member">Member-wise Report</option>
+      </select>
+      <select id="rep-month" class="form-control" style="width:auto" onchange="buildReport()">
+        ${App.MONTHS.map(m => `<option value="${m}" ${m===App.currentMonthName()?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <select id="rep-year" class="form-control" style="width:auto" onchange="buildReport()">
+        ${[yr, yr-1, yr-2].map(y => `<option value="${y}">${y}</option>`).join('')}
+      </select>
+      <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print</button>
+      <button class="btn btn-gold btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+    </div>
+
+    <div id="report-area"></div>
+  `;
+
+  let members = {}, collections = {};
+
+  async function loadData() {
+    members     = (await SyncEngine.read(`churches/${cid}/members`, `members_${cid}`)) || {};
+    collections = (await SyncEngine.read(`churches/${cid}/collections`, `collections_${cid}`)) || {};
+    buildReport();
+  }
+
+  window.buildReport = function() {
+    const type  = document.getElementById('rep-type').value;
+    const month = document.getElementById('rep-month').value;
+    const year  = document.getElementById('rep-year').value;
+    const repMonth = document.getElementById('rep-month');
+    repMonth.style.display = type === 'yearly' ? 'none' : 'block';
+
+    if (type === 'monthly') buildMonthlyReport(month, year);
+    else if (type === 'yearly') buildYearlyReport(year);
+    else buildMemberReport(year);
+  };
+
+  function buildMonthlyReport(month, year) {
+    const colls = Object.values(collections).filter(c => c.month === month && String(c.year || yr) === String(year));
+    const paidBy = {};
+    colls.forEach(c => { paidBy[c.memberId] = (paidBy[c.memberId] || 0) + Number(c.amount || 0); });
+
+    let target = 0, collected = 0, done = 0, pendCount = 0;
+    const rows = Object.entries(members).filter(([,m]) => m.status === 'active').sort((a,b) => a[1].name.localeCompare(b[1].name));
+
+    rows.forEach(([id, m]) => {
+      const t = Number(m.monthlyContribution || 0);
+      const p = paidBy[id] || 0;
+      target    += t;
+      collected += p;
+      if (p >= t) done++;
+      else pendCount++;
+    });
+
+    const pending = Math.max(0, target - collected);
+    const pct = target ? Math.round((collected/target)*100) : 0;
+    const church = settings.churchName || 'Church';
+
+    document.getElementById('report-area').innerHTML = `
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-body" style="text-align:center;padding:1.5rem">
+          <div style="font-size:1.4rem;font-weight:800">${church}</div>
+          <div style="font-size:1rem;color:var(--muted)">Monthly Collection Report – ${month} ${year}</div>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem">
+        ${tile('👥', 'Members', rows.length, '')}
+        ${tile('🎯', 'Target', App.currency(target), '')}
+        ${tile('✅', 'Collected', App.currency(collected), 'green')}
+        ${tile('⏳', 'Pending', App.currency(pending), 'red')}
+        ${tile('📈', 'Achievement', pct + '%', pct>=80?'green':pct>=50?'gold':'red')}
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Member Collection Status – ${month} ${year}</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Name</th><th>Area</th><th>Target</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody>
+              ${rows.map(([id, m], i) => {
+                const t = Number(m.monthlyContribution || 0);
+                const p = paidBy[id] || 0;
+                const b = Math.max(0, t - p);
+                const st = p >= t ? 'Completed' : p > 0 ? 'Partial' : 'Pending';
+                const cls = p >= t ? 'badge-success' : p > 0 ? 'badge-warning' : 'badge-danger';
+                return `<tr>
+                  <td>${i+1}</td><td style="font-weight:600">${m.name}</td><td>${m.area||'–'}</td>
+                  <td>${App.currency(t)}</td>
+                  <td style="color:var(--green);font-weight:600">${App.currency(p)}</td>
+                  <td style="color:var(--red)">${App.currency(b)}</td>
+                  <td><span class="badge ${cls}">${st}</span></td>
+                </tr>`;
+              }).join('')}
+              <tr style="background:var(--ivory);font-weight:700">
+                <td></td><td>TOTAL</td><td></td>
+                <td>${App.currency(target)}</td>
+                <td style="color:var(--green)">${App.currency(collected)}</td>
+                <td style="color:var(--red)">${App.currency(pending)}</td>
+                <td>${pct}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildYearlyReport(year) {
+    let grandTarget = 0, grandCollected = 0;
+    const rows = App.MONTHS.map(month => {
+      const colls = Object.values(collections).filter(c => c.month === month && String(c.year || yr) === String(year));
+      const collected = colls.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const target = Object.values(members).filter(m => m.status === 'active').reduce((s, m) => s + Number(m.monthlyContribution || 0), 0);
+      grandTarget    += target;
+      grandCollected += collected;
+      const pct = target ? Math.round((collected/target)*100) : 0;
+      return { month, target, collected, pending: Math.max(0, target-collected), pct };
+    });
+
+    document.getElementById('report-area').innerHTML = `
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-body" style="text-align:center;padding:1.5rem">
+          <div style="font-size:1.4rem;font-weight:800">${settings.churchName || 'Church'}</div>
+          <div style="font-size:1rem;color:var(--muted)">Yearly Collection Report – ${year}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Year ${year} – Month-wise Summary</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Month</th><th>Target</th><th>Collected</th><th>Pending</th><th>Achievement</th><th>Progress</th></tr></thead>
+            <tbody>
+              ${rows.map(r => `<tr>
+                <td style="font-weight:600">${r.month}</td>
+                <td>${App.currency(r.target)}</td>
+                <td style="color:var(--green);font-weight:600">${App.currency(r.collected)}</td>
+                <td style="color:var(--red)">${App.currency(r.pending)}</td>
+                <td><span class="badge ${r.pct>=80?'badge-success':r.pct>=50?'badge-warning':'badge-neutral'}">${r.pct}%</span></td>
+                <td style="min-width:100px">
+                  <div class="progress-bar">
+                    <div class="progress-fill" style="width:${r.pct}%;background:${r.pct>=80?'var(--green)':r.pct>=50?'var(--gold)':'var(--red)'}"></div>
+                  </div>
+                </td>
+              </tr>`).join('')}
+              <tr style="background:var(--ivory);font-weight:700">
+                <td>TOTAL</td>
+                <td>${App.currency(grandTarget)}</td>
+                <td style="color:var(--green)">${App.currency(grandCollected)}</td>
+                <td style="color:var(--red)">${App.currency(Math.max(0, grandTarget-grandCollected))}</td>
+                <td>${grandTarget?Math.round((grandCollected/grandTarget)*100):0}%</td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function buildMemberReport(year) {
+    const rows = Object.entries(members).filter(([,m]) => m.status === 'active').sort((a,b) => a[1].name.localeCompare(b[1].name));
+    const memberRows = rows.map(([id, m]) => {
+      const yearColls = Object.values(collections).filter(c => c.memberId === id && String(c.year || yr) === String(year));
+      const paid   = yearColls.reduce((s, c) => s + Number(c.amount || 0), 0);
+      const target = Number(m.monthlyContribution || 0) * 12;
+      const pct    = target ? Math.round((paid/target)*100) : 0;
+      return { m, id, paid, target, pending: Math.max(0, target-paid), pct };
+    });
+
+    document.getElementById('report-area').innerHTML = `
+      <div class="card">
+        <div class="card-header"><h3>Member-wise Yearly Report – ${year}</h3></div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Member</th><th>Area</th><th>Monthly</th><th>Annual Target</th><th>Paid</th><th>Pending</th><th>%</th></tr></thead>
+            <tbody>
+              ${memberRows.map((r, i) => `
+                <tr>
+                  <td>${i+1}</td>
+                  <td style="font-weight:600"><a href="member-profile.html?id=${r.id}" style="color:var(--navy)">${r.m.name}</a></td>
+                  <td>${r.m.area||'–'}</td>
+                  <td>${App.currency(r.m.monthlyContribution||0)}</td>
+                  <td>${App.currency(r.target)}</td>
+                  <td style="color:var(--green);font-weight:600">${App.currency(r.paid)}</td>
+                  <td style="color:var(--red)">${App.currency(r.pending)}</td>
+                  <td><span class="badge ${r.pct>=80?'badge-success':r.pct>=50?'badge-warning':'badge-neutral'}">${r.pct}%</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function tile(ico, lbl, val, color) {
+    return `<div class="stat-card">
+      <div class="stat-icon ${color||'navy'}">${ico}</div>
+      <div class="stat-info"><div class="label">${lbl}</div><div class="value" style="font-size:1.1rem">${val}</div></div>
+    </div>`;
+  }
+
+  window.exportCSV = function() {
+    const type  = document.getElementById('rep-type').value;
+    const month = document.getElementById('rep-month').value;
+    const year  = document.getElementById('rep-year').value;
+
+    let csv = '', filename = '';
+    if (type === 'monthly') {
+      csv = 'Name,Area,Target,Paid,Balance,Status\n';
+      filename = `report_${month}_${year}.csv`;
+      Object.entries(members).filter(([,m])=>m.status==='active').forEach(([id,m]) => {
+        const colls = Object.values(collections).filter(c=>c.memberId===id&&c.month===month&&String(c.year||yr)===year);
+        const paid  = colls.reduce((s,c)=>s+Number(c.amount||0),0);
+        const t     = Number(m.monthlyContribution||0);
+        const st    = paid>=t?'Completed':paid>0?'Partial':'Pending';
+        csv += `"${m.name}","${m.area||''}",${t},${paid},${Math.max(0,t-paid)},${st}\n`;
+      });
+    } else {
+      csv = 'Month,Target,Collected,Pending,Achievement%\n';
+      filename = `report_yearly_${year}.csv`;
+      App.MONTHS.forEach(mn => {
+        const c = Object.values(collections).filter(c=>c.month===mn&&String(c.year||yr)===year).reduce((s,c)=>s+Number(c.amount||0),0);
+        const t = Object.values(members).filter(m=>m.status==='active').reduce((s,m)=>s+Number(m.monthlyContribution||0),0);
+        csv += `${mn},${t},${c},${Math.max(0,t-c)},${t?Math.round((c/t)*100):0}%\n`;
+      });
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  loadData();
+});
+</script>
+</body>
+</html>

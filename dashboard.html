@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – Church Youth Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script src="js/1sync.js"></script>
+<script src="js/1app.js"></script>
+<script src="js/1layout.js"></script>
+
+<script>
+App.requireAuth(({ churchId, role, settings }) => {
+  renderLayout('Dashboard');
+
+  const body = document.getElementById('page-body');
+  body.innerHTML = `
+    <!-- Stats -->
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon navy">👥</div>
+        <div class="stat-info">
+          <div class="label">Total Members</div>
+          <div class="value" id="s-members">–</div>
+          <div class="sub">Active members</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon gold">🎯</div>
+        <div class="stat-info">
+          <div class="label">Monthly Target</div>
+          <div class="value" id="s-target">–</div>
+          <div class="sub">${App.currentMonthName()}</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+          <div class="label">Collected</div>
+          <div class="value" id="s-collected">–</div>
+          <div class="sub" id="s-ach">This month</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">⏳</div>
+        <div class="stat-info">
+          <div class="label">Pending</div>
+          <div class="value" id="s-pending">–</div>
+          <div class="sub">To be collected</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue">📈</div>
+        <div class="stat-info">
+          <div class="label">Achievement</div>
+          <div class="value" id="s-pct">–</div>
+          <div class="sub">
+            <div class="progress-bar" style="margin-top:.3rem">
+              <div class="progress-fill" id="s-bar" style="background:var(--gold);width:0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange">🏆</div>
+        <div class="stat-info">
+          <div class="label">Completed</div>
+          <div class="value" id="s-done">–</div>
+          <div class="sub">Members paid in full</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-header"><h3>Monthly Collection Trend</h3></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chart-monthly"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Yearly Overview</h3></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chart-yearly"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- Top contributors + Pending -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+      <div class="card">
+        <div class="card-header"><h3>🏆 Top Contributors</h3><span id="top-month" style="font-size:.78rem;color:var(--muted)">${App.currentMonthName()}</span></div>
+        <div class="card-body" style="padding:0">
+          <div id="top-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>⏳ Pending Members</h3><a href="collections.html" class="btn btn-gold btn-sm">Add Collection</a></div>
+        <div class="card-body" style="padding:0">
+          <div id="pending-list"></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Load data
+  const cid = churchId;
+  let members = {}, collections = {};
+
+  function calc() {
+    const curMonth = App.currentMonthName();
+    const cur = App.currentYear();
+    let target = 0, collected = 0, done = 0;
+    const memberCount = Object.values(members).filter(m => m.status === 'active').length;
+
+    Object.values(members).forEach(m => {
+      if (m.status !== 'active') return;
+      target += Number(m.monthlyContribution || 0);
+    });
+
+    const monthColls = Object.values(collections).filter(c => c.month === curMonth && String(c.year || cur) === String(cur));
+    const paidByMember = {};
+    monthColls.forEach(c => {
+      paidByMember[c.memberId] = (paidByMember[c.memberId] || 0) + Number(c.amount || 0);
+    });
+    collected = Object.values(paidByMember).reduce((a, b) => a + b, 0);
+
+    Object.entries(members).forEach(([id, m]) => {
+      if (m.status !== 'active') return;
+      const paid = paidByMember[id] || 0;
+      if (paid >= Number(m.monthlyContribution || 0)) done++;
+    });
+
+    const pending = Math.max(0, target - collected);
+    const pct = target ? Math.round((collected / target) * 100) : 0;
+
+    const cur_ = App.getCurrency ? App.getCurrency() : '₹';
+    document.getElementById('s-members').textContent   = memberCount;
+    document.getElementById('s-target').textContent    = App.currency(target);
+    document.getElementById('s-collected').textContent = App.currency(collected);
+    document.getElementById('s-pending').textContent   = App.currency(pending);
+    document.getElementById('s-pct').textContent       = pct + '%';
+    document.getElementById('s-done').textContent      = done;
+    document.getElementById('s-bar').style.width       = pct + '%';
+    document.getElementById('s-bar').style.background  = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--gold)' : 'var(--red)';
+    document.getElementById('s-ach').textContent       = `${pct}% achievement`;
+
+    // Top contributors
+    const topEntries = Object.entries(paidByMember)
+      .sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topEl = document.getElementById('top-list');
+    if (!topEntries.length) {
+      topEl.innerHTML = '<div class="empty-state"><div class="ico">🏅</div><p>No collections this month</p></div>';
+    } else {
+      topEl.innerHTML = topEntries.map(([id, amt], i) => {
+        const m = members[id];
+        if (!m) return '';
+        const init = (m.name || 'M').slice(0,2).toUpperCase();
+        return `<div style="display:flex;align-items:center;gap:.8rem;padding:.75rem 1.3rem;border-bottom:1px solid var(--border)">
+          <div style="font-weight:700;color:var(--gold);width:20px">${i+1}</div>
+          <div class="member-avatar">${init}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.88rem">${m.name}</div>
+            <div style="font-size:.75rem;color:var(--muted)">${m.area || ''}</div>
+          </div>
+          <div style="font-weight:700;color:var(--green)">${App.currency(amt)}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Pending members
+    const pendingMembers = Object.entries(members).filter(([id, m]) => {
+      if (m.status !== 'active') return false;
+      const paid = paidByMember[id] || 0;
+      return paid < Number(m.monthlyContribution || 0);
+    }).slice(0, 5);
+
+    const pendEl = document.getElementById('pending-list');
+    if (!pendingMembers.length) {
+      pendEl.innerHTML = '<div class="empty-state"><div class="ico">🎉</div><p>All members paid!</p></div>';
+    } else {
+      pendEl.innerHTML = pendingMembers.map(([id, m]) => {
+        const paid = paidByMember[id] || 0;
+        const bal  = Number(m.monthlyContribution || 0) - paid;
+        const init = (m.name || 'M').slice(0,2).toUpperCase();
+        return `<div style="display:flex;align-items:center;gap:.8rem;padding:.75rem 1.3rem;border-bottom:1px solid var(--border)">
+          <div class="member-avatar" style="background:linear-gradient(135deg,var(--red),#c0392b)">${init}</div>
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:.88rem">${m.name}</div>
+            <div style="font-size:.75rem;color:var(--muted)">${m.area || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;color:var(--red);font-size:.88rem">${App.currency(bal)}</div>
+            <div style="font-size:.7rem;color:var(--muted)">balance</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Yearly chart data
+    buildYearlyChart();
+    buildMonthlyChart(paidByMember);
+  }
+
+  function buildMonthlyChart(paidByMember) {
+    // Last 6 months collected vs target
+    const labels = [], dataCollected = [], dataTarget = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mn = App.MONTHS[d.getMonth()];
+      const yr = d.getFullYear();
+      labels.push(mn.slice(0,3));
+      let t = 0, c = 0;
+      Object.values(members).forEach(m => { if (m.status === 'active') t += Number(m.monthlyContribution || 0); });
+      const colls = Object.values(collections).filter(co => co.month === mn && String(co.year || now.getFullYear()) === String(yr));
+      colls.forEach(co => c += Number(co.amount || 0));
+      dataCollected.push(c);
+      dataTarget.push(t);
+    }
+
+    const ctx = document.getElementById('chart-monthly');
+    if (ctx._chart) ctx._chart.destroy();
+    ctx._chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Collected', data: dataCollected, backgroundColor: 'rgba(240,165,0,.8)', borderRadius: 6 },
+          { label: 'Target',    data: dataTarget,    backgroundColor: 'rgba(26,39,68,.15)',  borderRadius: 6 }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  function buildYearlyChart() {
+    const yr   = App.currentYear();
+    const labels = App.MONTHS.map(m => m.slice(0,3));
+    const data   = App.MONTHS.map(mn => {
+      return Object.values(collections)
+        .filter(c => c.month === mn && String(c.year || yr) === String(yr))
+        .reduce((s, c) => s + Number(c.amount || 0), 0);
+    });
+
+    const ctx = document.getElementById('chart-yearly');
+    if (ctx._chart) ctx._chart.destroy();
+    ctx._chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{ label: 'Collected ' + yr, data, fill: true,
+          borderColor: 'rgba(26,39,68,1)',
+          backgroundColor: 'rgba(26,39,68,.08)',
+          tension: .4, pointBackgroundColor: 'var(--gold)', pointRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // Live listeners
+  db.ref(`churches/${cid}/members`).on('value', snap => {
+    members = snap.val() || {};
+    SyncEngine.cacheWrite('members_' + cid, members);
+    calc();
+  });
+  db.ref(`churches/${cid}/collections`).on('value', snap => {
+    collections = snap.val() || {};
+    SyncEngine.cacheWrite('collections_' + cid, collections);
+    calc();
+  });
+
+  // If offline, load from cache
+  if (!navigator.onLine) {
+    members     = SyncEngine.readCache('members_' + cid) || {};
+    collections = SyncEngine.readCache('collections_' + cid) || {};
+    calc();
+  }
+});
+</script>
+</body>
+</html>

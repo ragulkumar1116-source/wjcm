@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Member Profile – Church Youth Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script src="js/1sync.js"></script>
+<script src="js/1app.js"></script>
+<script src="js/1layout.js"></script>
+<script>
+App.requireAuth(({ churchId, role }) => {
+  renderLayout('Member Profile');
+
+  const params = new URLSearchParams(location.search);
+  const memberId = params.get('id');
+  if (!memberId) { window.location.href = 'members.html'; return; }
+
+  const cid = churchId;
+  const body = document.getElementById('page-body');
+
+  async function load() {
+    const members     = (await SyncEngine.read(`churches/${cid}/members`, `members_${cid}`)) || {};
+    const collections = (await SyncEngine.read(`churches/${cid}/collections`, `collections_${cid}`)) || {};
+
+    const m = members[memberId];
+    if (!m) { body.innerHTML = '<p>Member not found.</p>'; return; }
+
+    // Compute stats
+    const monthly = Number(m.monthlyContribution || 0);
+    const yr = App.currentYear();
+
+    const memberColls = Object.values(collections).filter(c => c.memberId === memberId);
+    const totalPaid   = memberColls.reduce((s, c) => s + Number(c.amount || 0), 0);
+
+    // yearly summary
+    const yearColls = memberColls.filter(c => String(c.year || yr) === String(yr));
+    const yearPaid  = yearColls.reduce((s, c) => s + Number(c.amount || 0), 0);
+    const yearTarget= monthly * 12;
+
+    // monthly history for current year
+    const monthData = App.MONTHS.map(mn => {
+      const paid = yearColls.filter(c => c.month === mn).reduce((s, c) => s + Number(c.amount || 0), 0);
+      return { month: mn, paid, target: monthly, status: paid >= monthly ? 'paid' : paid > 0 ? 'partial' : 'unpaid' };
+    });
+
+    // Current month
+    const curMonth = App.currentMonthName();
+    const curPaid  = yearColls.filter(c => c.month === curMonth).reduce((s, c) => s + Number(c.amount || 0), 0);
+    const curBal   = Math.max(0, monthly - curPaid);
+
+    const init = (m.name || 'M').slice(0,2).toUpperCase();
+    const pct  = yearTarget ? Math.round((yearPaid / yearTarget) * 100) : 0;
+
+    body.innerHTML = `
+      <div style="display:flex;gap:.7rem;margin-bottom:1.2rem;align-items:center">
+        <a href="members.html" class="btn btn-outline btn-sm">← Back</a>
+        ${role === 'admin' || role === 'collector' ? `<button class="btn btn-gold btn-sm" onclick="addCollection()">➕ Add Collection</button>` : ''}
+        <button class="btn btn-outline btn-sm" onclick="window.print()">🖨 Print</button>
+      </div>
+
+      <!-- Profile header -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-body" style="display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap">
+          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--navy),var(--blue));
+                      color:white;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;flex-shrink:0">
+            ${init}
+          </div>
+          <div style="flex:1">
+            <h2 style="font-size:1.4rem;font-weight:800">${m.name}</h2>
+            <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:.4rem">
+              <span style="font-size:.85rem;color:var(--slate)">📞 ${m.mobile || '–'}</span>
+              <span style="font-size:.85rem;color:var(--slate)">📍 ${m.area || '–'}</span>
+              <span class="badge ${m.status === 'active' ? 'badge-success' : 'badge-danger'}">${m.status}</span>
+            </div>
+            <div style="font-size:.82rem;color:var(--muted);margin-top:.3rem">ID: ${memberId}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Monthly Target</div>
+            <div style="font-size:1.6rem;font-weight:800;color:var(--gold)">${App.currency(monthly)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stat-grid" style="margin-bottom:1rem">
+        <div class="stat-card">
+          <div class="stat-icon green">✅</div>
+          <div class="stat-info">
+            <div class="label">Total Paid (All Time)</div>
+            <div class="value">${App.currency(totalPaid)}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon gold">📅</div>
+          <div class="stat-info">
+            <div class="label">Year ${yr} Paid</div>
+            <div class="value">${App.currency(yearPaid)}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">⏳</div>
+          <div class="stat-info">
+            <div class="label">This Month Balance</div>
+            <div class="value">${App.currency(curBal)}</div>
+            <div class="sub">${curBal === 0 ? '✓ Fully paid' : App.currency(curPaid) + ' paid'}</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue">📈</div>
+          <div class="stat-info">
+            <div class="label">Year Achievement</div>
+            <div class="value">${pct}%</div>
+            <div class="sub">
+              <div class="progress-bar" style="margin-top:.3rem">
+                <div class="progress-fill" style="width:${pct}%;background:${pct>=80?'var(--green)':pct>=50?'var(--gold)':'var(--red)'}"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <!-- Monthly history table -->
+        <div class="card">
+          <div class="card-header"><h3>Monthly History ${yr}</h3></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>Month</th><th>Paid</th><th>Target</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                ${monthData.map(r => `
+                  <tr>
+                    <td>${r.month.slice(0,3)}</td>
+                    <td style="font-weight:600">${App.currency(r.paid)}</td>
+                    <td>${App.currency(r.target)}</td>
+                    <td>
+                      <span class="badge ${r.status === 'paid' ? 'badge-success' : r.status === 'partial' ? 'badge-warning' : 'badge-neutral'}">
+                        ${r.status === 'paid' ? '✓ Paid' : r.status === 'partial' ? '⚡ Partial' : '— Pending'}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent collections -->
+        <div class="card">
+          <div class="card-header"><h3>Collection Records</h3></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Month</th><th>Amount</th><th>Date</th><th>Remarks</th></tr></thead>
+              <tbody>
+                ${memberColls.length === 0
+                  ? `<tr><td colspan="4"><div class="empty-state"><div class="ico">💰</div><p>No collections yet</p></div></td></tr>`
+                  : memberColls.sort((a,b) => b.date?.localeCompare(a.date)).map(c => `
+                    <tr>
+                      <td>${c.month}</td>
+                      <td style="font-weight:600;color:var(--green)">${App.currency(c.amount)}</td>
+                      <td style="font-size:.8rem">${c.date || '–'}</td>
+                      <td style="font-size:.8rem;color:var(--muted)">${c.remarks || ''}</td>
+                    </tr>
+                  `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add collection modal -->
+      <div class="modal-overlay" id="coll-modal">
+        <div class="modal">
+          <div class="modal-header"><h3>Add Collection for ${m.name}</h3><button class="btn btn-outline btn-sm" onclick="document.getElementById('coll-modal').classList.remove('open')">✕</button></div>
+          <div class="modal-body">
+            <div id="coll-alert" class="alert alert-danger"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Month *</label>
+                <select id="c-month" class="form-control">
+                  ${App.MONTHS.map(mn => `<option value="${mn}" ${mn === curMonth ? 'selected' : ''}>${mn}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Year</label>
+                <input id="c-year" type="number" class="form-control" value="${yr}">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Amount Paid (${App.getCurrency()}) *</label>
+                <input id="c-amount" type="number" class="form-control" placeholder="${monthly}" value="${monthly}">
+              </div>
+              <div class="form-group">
+                <label>Date</label>
+                <input id="c-date" type="date" class="form-control" value="${new Date().toISOString().split('T')[0]}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Remarks</label>
+              <input id="c-remarks" type="text" class="form-control" placeholder="e.g. Full payment, Cash">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="document.getElementById('coll-modal').classList.remove('open')">Cancel</button>
+            <button class="btn btn-gold" onclick="saveCollection('${memberId}','${m.name}')">💾 Save</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  window.addCollection = function() {
+    document.getElementById('coll-modal').classList.add('open');
+  };
+
+  window.saveCollection = async function(memberId, memberName) {
+    const month   = document.getElementById('c-month').value;
+    const year    = document.getElementById('c-year').value;
+    const amount  = document.getElementById('c-amount').value;
+    const date    = document.getElementById('c-date').value;
+    const remarks = document.getElementById('c-remarks').value.trim();
+
+    if (!amount || Number(amount) <= 0) {
+      const al = document.getElementById('coll-alert');
+      al.textContent = 'Please enter a valid amount.';
+      al.classList.add('show');
+      return;
+    }
+
+    const id = App.newId('COL');
+    const data = { memberId, memberName, month, year: Number(year), amount: Number(amount), date, remarks, createdAt: Date.now() };
+    await SyncEngine.write(`churches/${cid}/collections/${id}`, data, 'set');
+    document.getElementById('coll-modal').classList.remove('open');
+    load(); // refresh
+  };
+
+  load();
+});
+</script>
+</body>
+</html>

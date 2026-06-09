@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Members – Church Youth Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script src="js/1sync.js"></script>
+<script src="js/1app.js"></script>
+<script src="js/1layout.js"></script>
+
+<script>
+App.requireAuth(({ churchId, role }) => {
+  renderLayout('Members');
+
+  const body = document.getElementById('page-body');
+  body.innerHTML = `
+    <!-- Toolbar -->
+    <div class="toolbar no-print">
+      <div class="search-wrap">
+        <span class="search-ico">🔍</span>
+        <input type="text" id="search" class="form-control" placeholder="Search by name, mobile, area…" oninput="filterMembers()">
+      </div>
+      <select id="filter-area" class="form-control" style="width:auto" onchange="filterMembers()">
+        <option value="">All Areas</option>
+      </select>
+      <select id="filter-status" class="form-control" style="width:auto" onchange="filterMembers()">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      ${role === 'admin' || role === 'collector' ? `<button class="btn btn-gold" onclick="openModal()">➕ Add Member</button>` : ''}
+    </div>
+
+    <!-- Stats row -->
+    <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1rem">
+      <div class="stat-card">
+        <div class="stat-icon navy">👥</div>
+        <div class="stat-info"><div class="label">Total</div><div class="value" id="cnt-total">0</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><div class="label">Active</div><div class="value" id="cnt-active">0</div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red">❌</div>
+        <div class="stat-info"><div class="label">Inactive</div><div class="value" id="cnt-inactive">0</div></div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Member List</h3>
+        <span id="member-count" style="font-size:.8rem;color:var(--muted)"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Member</th>
+              <th>Mobile</th>
+              <th>Area</th>
+              <th>Monthly</th>
+              <th>Status</th>
+              <th class="no-print">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="members-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="modal-title">Add Member</h3>
+          <button class="btn btn-outline btn-sm" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="form-alert" class="alert alert-danger"></div>
+          <input type="hidden" id="edit-id">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input id="f-name" type="text" class="form-control" placeholder="Member's full name">
+            </div>
+            <div class="form-group">
+              <label>Mobile Number</label>
+              <input id="f-mobile" type="tel" class="form-control" placeholder="10-digit number">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Area / Zone</label>
+              <input id="f-area" type="text" class="form-control" placeholder="e.g. North Area">
+            </div>
+            <div class="form-group">
+              <label>Monthly Contribution (${App.getCurrency()})</label>
+              <input id="f-contrib" type="number" class="form-control" placeholder="100" min="0">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="f-status" class="form-control">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Remarks / Notes</label>
+            <textarea id="f-notes" class="form-control" placeholder="Optional notes…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+          <button class="btn btn-gold" onclick="saveMember()">💾 Save Member</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete confirm -->
+    <div class="modal-overlay" id="del-modal">
+      <div class="modal" style="max-width:380px">
+        <div class="modal-header"><h3>Delete Member</h3></div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete <strong id="del-name"></strong>? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="document.getElementById('del-modal').classList.remove('open')">Cancel</button>
+          <button class="btn btn-danger" onclick="confirmDelete()">🗑 Delete</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const cid = churchId;
+  let allMembers = {};
+  let deleteTarget = null;
+
+  // Live sync
+  db.ref(`churches/${cid}/members`).on('value', snap => {
+    allMembers = snap.val() || {};
+    SyncEngine.cacheWrite('members_' + cid, allMembers);
+    populateAreas();
+    filterMembers();
+    updateCounts();
+  });
+
+  if (!navigator.onLine) {
+    allMembers = SyncEngine.readCache('members_' + cid) || {};
+    populateAreas();
+    filterMembers();
+    updateCounts();
+  }
+
+  window.filterMembers = function() {
+    const q      = (document.getElementById('search').value || '').toLowerCase();
+    const area   = document.getElementById('filter-area').value;
+    const status = document.getElementById('filter-status').value;
+
+    const filtered = Object.entries(allMembers).filter(([id, m]) => {
+      const matchQ = !q || m.name?.toLowerCase().includes(q) || m.mobile?.includes(q) || m.area?.toLowerCase().includes(q);
+      const matchA = !area   || m.area === area;
+      const matchS = !status || m.status === status;
+      return matchQ && matchA && matchS;
+    });
+
+    document.getElementById('member-count').textContent = `${filtered.length} member(s)`;
+
+    const tbody = document.getElementById('members-body');
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="ico">👥</div><p>No members found</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(([id, m], i) => {
+      const init = (m.name || 'M').slice(0,2).toUpperCase();
+      const canEdit = role === 'admin' || role === 'collector';
+      return `
+        <tr>
+          <td style="color:var(--muted);font-size:.8rem">${i+1}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:.7rem">
+              <div class="member-avatar">${init}</div>
+              <div>
+                <a href="member-profile.html?id=${id}" style="font-weight:600;color:var(--navy);text-decoration:none">${m.name}</a>
+                <div style="font-size:.72rem;color:var(--muted)">${id}</div>
+              </div>
+            </div>
+          </td>
+          <td>${m.mobile || '–'}</td>
+          <td>${m.area || '–'}</td>
+          <td style="font-weight:600">${App.currency(m.monthlyContribution || 0)}</td>
+          <td><span class="badge ${m.status === 'active' ? 'badge-success' : 'badge-danger'}">${m.status || 'active'}</span></td>
+          <td class="no-print">
+            <div style="display:flex;gap:.4rem">
+              <a href="member-profile.html?id=${id}" class="btn btn-outline btn-sm">👁 View</a>
+              ${canEdit ? `<button class="btn btn-outline btn-sm" onclick="editMember('${id}')">✏️</button>` : ''}
+              ${role === 'admin' ? `<button class="btn btn-danger btn-sm" onclick="deleteMember('${id}','${m.name}')">🗑</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  function populateAreas() {
+    const areas = [...new Set(Object.values(allMembers).map(m => m.area).filter(Boolean))].sort();
+    const sel = document.getElementById('filter-area');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All Areas</option>' + areas.map(a => `<option value="${a}">${a}</option>`).join('');
+    sel.value = cur;
+  }
+
+  function updateCounts() {
+    const vals = Object.values(allMembers);
+    document.getElementById('cnt-total').textContent    = vals.length;
+    document.getElementById('cnt-active').textContent   = vals.filter(m => m.status === 'active').length;
+    document.getElementById('cnt-inactive').textContent = vals.filter(m => m.status !== 'active').length;
+  }
+
+  window.openModal = function(id) {
+    document.getElementById('form-alert').classList.remove('show');
+    document.getElementById('edit-id').value      = '';
+    document.getElementById('f-name').value       = '';
+    document.getElementById('f-mobile').value     = '';
+    document.getElementById('f-area').value       = '';
+    document.getElementById('f-contrib').value    = '';
+    document.getElementById('f-status').value     = 'active';
+    document.getElementById('f-notes').value      = '';
+    document.getElementById('modal-title').textContent = 'Add Member';
+    document.getElementById('modal').classList.add('open');
+  };
+
+  window.editMember = function(id) {
+    const m = allMembers[id];
+    if (!m) return;
+    document.getElementById('form-alert').classList.remove('show');
+    document.getElementById('edit-id').value      = id;
+    document.getElementById('f-name').value       = m.name || '';
+    document.getElementById('f-mobile').value     = m.mobile || '';
+    document.getElementById('f-area').value       = m.area || '';
+    document.getElementById('f-contrib').value    = m.monthlyContribution || '';
+    document.getElementById('f-status').value     = m.status || 'active';
+    document.getElementById('f-notes').value      = m.notes || '';
+    document.getElementById('modal-title').textContent = 'Edit Member';
+    document.getElementById('modal').classList.add('open');
+  };
+
+  window.closeModal = function() {
+    document.getElementById('modal').classList.remove('open');
+  };
+
+  window.saveMember = async function() {
+    const name   = document.getElementById('f-name').value.trim();
+    const mobile = document.getElementById('f-mobile').value.trim();
+    const area   = document.getElementById('f-area').value.trim();
+    const contrib= document.getElementById('f-contrib').value;
+    const status = document.getElementById('f-status').value;
+    const notes  = document.getElementById('f-notes').value.trim();
+
+    if (!name) {
+      const al = document.getElementById('form-alert');
+      al.textContent = 'Member name is required.';
+      al.classList.add('show');
+      return;
+    }
+
+    const editId = document.getElementById('edit-id').value;
+    const id     = editId || App.newId('MBR');
+    const data   = { name, mobile, area, monthlyContribution: Number(contrib) || 0, status, notes, updatedAt: Date.now() };
+    if (!editId) data.createdAt = Date.now();
+
+    // Write via SyncEngine (works offline)
+    await SyncEngine.write(`churches/${cid}/members/${id}`, data, editId ? 'update' : 'set');
+
+    // Update local cache immediately for offline UX
+    allMembers[id] = { ...(allMembers[id] || {}), ...data };
+    SyncEngine.cacheWrite('members_' + cid, allMembers);
+    filterMembers();
+    updateCounts();
+    populateAreas();
+    closeModal();
+  };
+
+  window.deleteMember = function(id, name) {
+    deleteTarget = id;
+    document.getElementById('del-name').textContent = name;
+    document.getElementById('del-modal').classList.add('open');
+  };
+
+  window.confirmDelete = async function() {
+    if (!deleteTarget) return;
+    await SyncEngine.write(`churches/${cid}/members/${deleteTarget}`, null, 'remove');
+    delete allMembers[deleteTarget];
+    SyncEngine.cacheWrite('members_' + cid, allMembers);
+    filterMembers();
+    updateCounts();
+    document.getElementById('del-modal').classList.remove('open');
+    deleteTarget = null;
+  };
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings – Church Youth Manager</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="firebase/firebase-config.js"></script>
+<script src="js/1sync.js"></script>
+<script src="js/1app.js"></script>
+<script src="js/1layout.js"></script>
+<script>
+App.requireAuth(async ({ churchId, role, settings }) => {
+  if (role !== 'admin') { window.location.href = 'dashboard.html'; return; }
+  renderLayout('Settings');
+
+  const cid  = churchId;
+  const body = document.getElementById('page-body');
+
+  // Load users
+  const usersSnap = await db.ref(`churches/${cid}/users`).once('value').catch(()=>null);
+  const users = usersSnap ? (usersSnap.val() || {}) : {};
+
+  body.innerHTML = `
+    <div style="max-width:680px;margin:0 auto">
+
+      <!-- Church Settings -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header"><h3>⛪ Church Settings</h3></div>
+        <div class="card-body">
+          <div id="settings-alert" class="alert alert-success"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Church Name</label>
+              <input id="s-name" type="text" class="form-control" value="${settings.churchName || ''}" placeholder="My Church">
+            </div>
+            <div class="form-group">
+              <label>Currency Symbol</label>
+              <select id="s-currency" class="form-control">
+                <option value="₹" ${(settings.currency||'₹')==='₹'?'selected':''}>₹ Indian Rupee</option>
+                <option value="$" ${settings.currency==='$'?'selected':''}>$ US Dollar</option>
+                <option value="€" ${settings.currency==='€'?'selected':''}>€ Euro</option>
+                <option value="£" ${settings.currency==='£'?'selected':''}>£ Pound</option>
+                <option value="₦" ${settings.currency==='₦'?'selected':''}>₦ Naira</option>
+                <option value="KES" ${settings.currency==='KES'?'selected':''}>KES Kenyan Shilling</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Financial Year Start</label>
+              <select id="s-fyear" class="form-control">
+                ${App.MONTHS.map(m => `<option value="${m}" ${(settings.financialYearStart||'January')===m?'selected':''}>${m}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Default Monthly Target (${settings.currency||'₹'})</label>
+              <input id="s-default" type="number" class="form-control" value="${settings.defaultMonthlyTarget || ''}" placeholder="100">
+            </div>
+          </div>
+          <button class="btn btn-gold" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+      </div>
+
+      <!-- User Management -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <div class="card-header">
+          <h3>👤 User Management</h3>
+          <button class="btn btn-gold btn-sm" onclick="openUserModal()">➕ Add User</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="card" style="border:1.5px solid var(--red)">
+        <div class="card-header"><h3 style="color:var(--red)">⚠ Danger Zone</h3></div>
+        <div class="card-body">
+          <p style="font-size:.85rem;color:var(--slate);margin-bottom:1rem">
+            Clearing the offline cache will force the app to re-sync all data from Firebase on next load.
+          </p>
+          <button class="btn btn-outline" onclick="clearCache()">🧹 Clear Offline Cache</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Modal -->
+    <div class="modal-overlay" id="user-modal">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-header"><h3>Add User</h3><button class="btn btn-outline btn-sm" onclick="closeUserModal()">✕</button></div>
+        <div class="modal-body">
+          <div id="user-alert" class="alert alert-danger"></div>
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">
+            Users must already have a Firebase account (created via Firebase Console or email sign-up). Enter their UID and details below.
+          </p>
+          <div class="form-group">
+            <label>Firebase UID *</label>
+            <input id="u-uid" type="text" class="form-control" placeholder="e.g. abc123xyz…">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Name *</label>
+              <input id="u-name" type="text" class="form-control" placeholder="Full name">
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input id="u-email" type="email" class="form-control" placeholder="user@church.org">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Role *</label>
+            <select id="u-role" class="form-control">
+              <option value="collector">Collector – Can add collections</option>
+              <option value="viewer">Viewer – Read only</option>
+              <option value="admin">Admin – Full access</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeUserModal()">Cancel</button>
+          <button class="btn btn-gold" onclick="addUser()">💾 Save User</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderUsers(users);
+
+  function renderUsers(users) {
+    const tbody = document.getElementById('users-body');
+    if (!Object.keys(users).length) {
+      tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="ico">👤</div><p>No users yet</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = Object.entries(users).map(([uid, u]) => `
+      <tr>
+        <td style="font-weight:600">${u.name}</td>
+        <td style="font-size:.83rem">${u.email||'–'}</td>
+        <td><span class="badge ${u.role==='admin'?'badge-info':u.role==='collector'?'badge-success':'badge-neutral'}">${u.role}</span></td>
+        <td><button class="btn btn-danger btn-sm" onclick="removeUser('${uid}')">🗑</button></td>
+      </tr>
+    `).join('');
+  }
+
+  window.saveSettings = async function() {
+    const data = {
+      churchName:          document.getElementById('s-name').value.trim(),
+      currency:            document.getElementById('s-currency').value,
+      financialYearStart:  document.getElementById('s-fyear').value,
+      defaultMonthlyTarget:Number(document.getElementById('s-default').value) || 0,
+    };
+    await SyncEngine.write(`churches/${cid}/settings`, data, 'update');
+    const al = document.getElementById('settings-alert');
+    al.textContent = '✓ Settings saved successfully!';
+    al.classList.add('show');
+    setTimeout(() => al.classList.remove('show'), 3000);
+  };
+
+  window.openUserModal = function() {
+    document.getElementById('user-alert').classList.remove('show');
+    document.getElementById('u-uid').value   = '';
+    document.getElementById('u-name').value  = '';
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-role').value  = 'collector';
+    document.getElementById('user-modal').classList.add('open');
+  };
+  window.closeUserModal = function() {
+    document.getElementById('user-modal').classList.remove('open');
+  };
+
+  window.addUser = async function() {
+    const uid   = document.getElementById('u-uid').value.trim();
+    const name  = document.getElementById('u-name').value.trim();
+    const email = document.getElementById('u-email').value.trim();
+    const role  = document.getElementById('u-role').value;
+    if (!uid || !name) {
+      const al = document.getElementById('user-alert');
+      al.textContent = 'UID and Name are required.';
+      al.classList.add('show');
+      return;
+    }
+    const userData = { name, email, role };
+    // Save to church users node
+    await SyncEngine.write(`churches/${cid}/users/${uid}`, userData, 'set');
+    // Save to global userIndex for quick auth lookup
+    await SyncEngine.write(`userIndex/${uid}`, { churchId: cid, role }, 'set');
+
+    users[uid] = userData;
+    renderUsers(users);
+    closeUserModal();
+  };
+
+  window.removeUser = async function(uid) {
+    if (!confirm('Remove this user?')) return;
+    await db.ref(`churches/${cid}/users/${uid}`).remove();
+    await db.ref(`userIndex/${uid}`).remove();
+    delete users[uid];
+    renderUsers(users);
+  };
+
+  window.clearCache = function() {
+    if (!confirm('Clear all offline cached data?')) return;
+    Object.keys(localStorage).filter(k => k.startsWith('cym')).forEach(k => localStorage.removeItem(k));
+    alert('Cache cleared. Refresh to reload from Firebase.');
+  };
+});
+</script>
+</body>
+</html>
