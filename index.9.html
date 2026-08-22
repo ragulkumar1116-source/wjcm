@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aadhav Intech - Installation & Commissioning Report Generator</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="font-times">
+  <!-- Top Toolbar -->
+  <header class="app-header no-print">
+    <div class="header-brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <h1>Aadhav Intech Report Generator</h1>
+    </div>
+    <div class="header-actions">
+      <!-- Preset Loader Select -->
+      <div class="preset-dropdown">
+        <button type="button" class="btn btn-secondary" id="btn-load-adithya">
+          Load Adithya Techno Park (Doc)
+        </button>
+        <button type="button" class="btn btn-secondary" id="btn-load-ganga">
+          Load Ganga Hospital (Pdf)
+        </button>
+      </div>
+
+      <button type="button" class="btn btn-outline" id="btn-clear-form">
+        Clear Form
+      </button>
+
+      <button type="button" class="btn btn-primary" id="btn-print-report">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        Print / Save A4 PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- App Main Layout -->
+  <div class="app-layout">
+    <!-- Form Editor Panel -->
+    <aside class="editor-panel no-print">
+      <div class="editor-header">
+        <h2>Report Details Editor</h2>
+        <p>Real-time two-way synchronization with A4 output preview.</p>
+      </div>
+
+      <form id="report-form" autocomplete="off">
+        <!-- Font Selection -->
+        <div class="form-section">
+          <h3>Typography & Font Selector</h3>
+          <div class="form-group">
+            <label for="select-font-family">Document Font Family</label>
+            <select id="select-font-family" class="form-control-select">
+              <option value="font-times" selected>Times New Roman (Standard Word Doc)</option>
+              <option value="font-arial">Arial (Modern Clean)</option>
+              <option value="font-calibri">Calibri (Corporate)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Date Meta -->
+        <div class="form-section">
+          <h3>Report Date</h3>
+          <div class="form-group">
+            <label for="input-date">Date</label>
+            <input type="text" id="input-date" placeholder="DD/MM/YYYY" value="20/08/2026">
+          </div>
+        </div>
+
+        <!-- Customer Details -->
+        <div class="form-section">
+          <h3>Customer Details</h3>
+          <div class="form-group">
+            <label for="input-cust-name">Customer Name & Address</label>
+            <input type="text" id="input-cust-name" value="ADITHYA TECHNO PARK" placeholder="Hospital / Company Name">
+          </div>
+          <div class="form-group">
+            <label for="input-cust-addr1">Address Line 1</label>
+            <input type="text" id="input-cust-addr1" value="368, Thudiyalur Rd, Vasantham Nagar">
+          </div>
+          <div class="form-group">
+            <label for="input-cust-addr2">Address Line 2</label>
+            <input type="text" id="input-cust-addr2" value="Saravanampatti">
+          </div>
+          <div class="form-group">
+            <label for="input-cust-addr3">Address Line 3 (State / Pin)</label>
+            <input type="text" id="input-cust-addr3" value="Coimbatore, Tamil Nadu 641035">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="input-contact-person">Contact Person</label>
+              <input type="text" id="input-contact-person" value="A.ESAIMARAN" placeholder="Name">
+            </div>
+            <div class="form-group">
+              <label for="input-dept">Dept.</label>
+              <input type="text" id="input-dept" value="STP" placeholder="Department">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="input-tel">Tel. No.</label>
+              <input type="text" id="input-tel" placeholder="Telephone">
+            </div>
+            <div class="form-group">
+              <label for="input-mobile">Mobile</label>
+              <input type="text" id="input-mobile" value="9944037958" placeholder="Mobile">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="input-email">E-Mail</label>
+            <input type="email" id="input-email" value="Aesaimaran27@gmail.com" placeholder="Email Address">
+          </div>
+        </div>
+
+        <!-- Instrument Details -->
+        <div class="form-section">
+          <h3>Instruments Details</h3>
+          <div class="form-group">
+            <label for="input-inst-name">Instrument Name</label>
+            <input type="text" id="input-inst-name" value="OCEMS L- 600">
+          </div>
+          <div class="form-group">
+            <label for="input-inst-model">Instrument Model</label>
+            <input type="text" id="input-inst-model" value="AAD - OCEMS L - 600">
+          </div>
+          <div class="form-group">
+            <label for="input-sr-no">Sr. No</label>
+            <input type="text" id="input-sr-no" value="WQA25024" placeholder="Serial Number">
+          </div>
+        </div>
+
+        <!-- Service Details -->
+        <div class="form-section">
+          <h3>Service Details</h3>
+          <div class="checkbox-grid">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-installation" checked>
+              <span>Installation</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-warranty">
+              <span>warranty</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-amc">
+              <span>AMC</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-services">
+              <span>Services</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-calibration">
+              <span>Calibration</span>
+            </label>
+          </div>
+
+          <div class="chargeable-block">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chk-chargeable">
+              <span>Chargeable/Free</span>
+            </label>
+            <div class="form-group" style="margin-top: 8px;">
+              <label for="input-charge-amount">If chargeable Amount Rs.</label>
+              <input type="text" id="input-charge-amount" placeholder="Amount">
+            </div>
+          </div>
+        </div>
+
+        <!-- Regards & Work Details -->
+        <div class="form-section">
+          <h3>Regards & Work Details</h3>
+          <div class="form-group">
+            <label for="input-regards">Regards</label>
+            <input type="text" id="input-regards" value="NEW Installation and Commissioning">
+          </div>
+          <div class="form-group">
+            <label for="input-action-taken">Action Taken</label>
+            <textarea id="input-action-taken" rows="8" placeholder="Action taken details..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="input-customer-remark">Customer Remark</label>
+            <textarea id="input-customer-remark" rows="4" placeholder="Customer remarks..."></textarea>
+          </div>
+        </div>
+
+        <!-- Signatures & Stamp -->
+        <div class="form-section">
+          <h3>Signatures & Stamp</h3>
+          
+          <div class="signature-input-box">
+            <h4>Engineer Signature</h4>
+            <div class="signature-tabs">
+              <button type="button" class="tab-btn active" data-target="eng-draw">Draw</button>
+              <button type="button" class="tab-btn" data-target="eng-file">Upload Image</button>
+            </div>
+            <div class="tab-content active" id="eng-draw">
+              <canvas id="canvas-engineer" width="300" height="80"></canvas>
+              <button type="button" class="btn btn-xs" id="btn-clear-eng-canvas">Clear Canvas</button>
+            </div>
+            <div class="tab-content" id="eng-file">
+              <input type="file" id="file-engineer-sig" accept="image/*">
+            </div>
+          </div>
+
+          <div class="signature-input-box">
+            <h4>Customer Seal & Signature</h4>
+            <div class="signature-tabs">
+              <button type="button" class="tab-btn active" data-target="cust-draw">Draw</button>
+              <button type="button" class="tab-btn" data-target="cust-file">Upload Image</button>
+            </div>
+            <div class="tab-content active" id="cust-draw">
+              <canvas id="canvas-customer" width="300" height="80"></canvas>
+              <button type="button" class="btn btn-xs" id="btn-clear-cust-canvas">Clear Canvas</button>
+            </div>
+            <div class="tab-content" id="cust-file">
+              <input type="file" id="file-customer-sig" accept="image/*">
+            </div>
+          </div>
+        </div>
+      </form>
+    </aside>
+
+    <!-- Right Live Preview Panel -->
+    <main class="preview-panel">
+      <div class="preview-bar no-print">
+        <span>Live Preview (Exact A4 Standard Output)</span>
+        <span class="preview-badge">A4 Portrait (210mm × 297mm)</span>
+      </div>
+
+      <div class="a4-wrapper">
+        <!-- Exact A4 Printable Document Structure -->
+        <div class="a4-document font-times" id="a4-report-content">
+          <!-- Header Area -->
+          <div class="doc-header">
+            <h1 class="company-name">AADHAV INTECH</h1>
+            <div class="company-address">No:60, 3<sup>rd</sup> Street, Kasi Theatre, West Jafferkhanpet, Chennai-600 0083,</div>
+            <div class="company-contact">Landline: 044 - 4204 1270; Mobile: 7092466445</div>
+            <div class="company-email">Email: <a href="mailto:service@aadhavintech.com">service@aadhavintech.com</a></div>
+          </div>
+
+          <!-- Title -->
+          <div class="report-title">
+            INSTALLATION AND COMMISSIONING REPORT
+          </div>
+
+          <!-- Section 1: Customer Details Table -->
+          <table class="report-table cust-table">
+            <thead>
+              <tr>
+                <th class="th-cust-title">CUSTOMER DETAILS</th>
+                <th class="th-date-title" id="view-date-cell">Date: 20/08/2026</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="col-left">
+                  <div class="lbl">Customer Name & Address</div>
+                  <div class="val-bold" id="view-cust-name">ADITHYA TECHNO PARK</div>
+                </td>
+                <td class="col-right">
+                  <span class="lbl-inline">Contact Person</span>
+                  <span class="val-inline" id="view-contact-person">A.ESAIMARAN</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-left">
+                  <div class="val" id="view-cust-addr1">368, Thudiyalur Rd, Vasantham Nagar</div>
+                </td>
+                <td class="col-right">
+                  <span class="lbl-inline">Dept.:</span>
+                  <span class="val-inline" id="view-dept">STP</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-left">
+                  <div class="val" id="view-cust-addr2">Saravanampatti</div>
+                </td>
+                <td class="col-right">
+                  <span class="lbl-inline">Tel. No.:</span>
+                  <span class="val-inline" id="view-tel"></span>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-left">
+                  <div class="val" id="view-cust-addr3">Coimbatore, Tamil Nadu 641035</div>
+                </td>
+                <td class="col-right">
+                  <span class="lbl-inline">Mobile:</span>
+                  <span class="val-inline" id="view-mobile">9944037958</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="col-left"></td>
+                <td class="col-right">
+                  <span class="lbl-inline">E-Mail.:</span>
+                  <span class="val-inline" id="view-email">Aesaimaran27@gmail.com</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Section 2: Instruments Details Table -->
+          <table class="report-table inst-table">
+            <thead>
+              <tr>
+                <th colspan="2" class="th-center">INSTRUMENTS DETAILS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="cell-label">Instrument Name</td>
+                <td class="cell-val-bold" id="view-inst-name">OCEMS L- 600</td>
+              </tr>
+              <tr>
+                <td class="cell-label">Instrument Model</td>
+                <td class="cell-val-bold" id="view-inst-model">AAD - OCEMS L - 600</td>
+              </tr>
+              <tr>
+                <td class="cell-label">Sr. No</td>
+                <td class="cell-val" id="view-sr-no">WQA25024</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Section 3: Service Details Block -->
+          <div class="report-block service-block">
+            <div class="block-title">SERVICE DETAILS</div>
+            <div class="service-checkboxes-row">
+              <span class="chk-item"><span class="chk-box" id="view-chk-installation">☑</span>Installation</span>
+              <span class="chk-item"><span class="chk-box" id="view-chk-warranty">☐</span>warranty</span>
+              <span class="chk-item"><span class="chk-box" id="view-chk-amc">☐</span>AMC</span>
+              <span class="chk-item"><span class="chk-box" id="view-chk-services">☐</span>Services</span>
+              <span class="chk-item"><span class="chk-box" id="view-chk-calibration">☐</span>Calibration</span>
+            </div>
+            <div class="service-chargeable-row">
+              <span class="chk-box" id="view-chk-chargeable">☐</span>Chargeable/Free. if chargeable Amount Rs. <span class="underline-amount" id="view-charge-amount">_______________</span>
+            </div>
+          </div>
+
+          <!-- Section 4: Regards Row -->
+          <div class="report-block regards-block">
+            <table class="nested-table">
+              <tr>
+                <td class="td-regards-lbl">Regards:</td>
+                <td class="td-regards-val" id="view-regards">NEW Installation and Commissioning</td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- Section 5: Action Taken Block -->
+          <div class="report-block action-block">
+            <div class="block-subheading">Action Taken:</div>
+            <div class="action-content" id="view-action-taken"></div>
+          </div>
+
+          <!-- Section 6: Customer Remark Block -->
+          <div class="report-block remark-block">
+            <div class="block-subheading">Customer Remark:</div>
+            <div class="remark-content" id="view-customer-remark"></div>
+          </div>
+
+          <!-- Section 7: Signatures Grid -->
+          <div class="signature-section-grid">
+            <div class="sig-box sig-left">
+              <div class="sig-image-container" id="view-eng-sig-img"></div>
+              <div class="sig-bottom-label">Engineer Signature</div>
+            </div>
+            <div class="sig-box sig-right">
+              <div class="sig-top-label">Machine Working Satisfactory</div>
+              <div class="sig-image-container" id="view-cust-sig-img"></div>
+              <div class="sig-bottom-label">Customer Seal & Signature</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

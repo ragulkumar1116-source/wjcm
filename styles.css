@@ -1,0 +1,676 @@
+/* ==========================================================================
+   Aadhav Intech Installation & Commissioning Report Stylesheet
+   Screen Editor UI + Multi-Font Exact A4 Print Sheet Engine
+   ========================================================================== */
+
+:root {
+  --bg-dark: #0f172a;
+  --panel-bg: #1e293b;
+  --border-color: #334155;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #38bdf8;
+  --primary-hover: #0284c7;
+  --accent: #818cf8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Document Font Classes */
+.font-times {
+  font-family: "Times New Roman", Times, serif !important;
+}
+
+.font-arial {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+
+.font-calibri {
+  font-family: Calibri, "Segoe UI", sans-serif !important;
+}
+
+/* Top Navigation Bar */
+.app-header {
+  height: 60px;
+  background-color: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--primary);
+}
+
+.header-brand h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.preset-dropdown {
+  display: flex;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #0f172a;
+}
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--border-color);
+  color: var(--text-main);
+}
+.btn-secondary:hover {
+  background-color: #475569;
+}
+
+.btn-outline {
+  background-color: transparent;
+  border-color: var(--border-color);
+  color: var(--text-muted);
+}
+.btn-outline:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  background-color: #334155;
+  color: #cbd5e1;
+  margin-top: 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-xs:hover {
+  background-color: #475569;
+}
+
+/* App Layout Grid */
+.app-layout {
+  display: flex;
+  min-height: calc(100vh - 60px);
+}
+
+/* Left Editor Panel */
+.editor-panel {
+  width: 420px;
+  background-color: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(100vh - 60px);
+}
+
+.editor-header h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.editor-header p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.form-section {
+  background-color: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.form-section h3 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.form-group {
+  margin-bottom: 10px;
+}
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+.form-row .form-group {
+  flex: 1;
+}
+
+label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="email"],
+textarea,
+.form-control-select {
+  width: 100%;
+  padding: 7px 10px;
+  background-color: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: #ffffff;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+textarea:focus,
+.form-control-select:focus {
+  border-color: var(--primary);
+}
+
+textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.chargeable-block {
+  border-top: 1px dashed var(--border-color);
+  padding-top: 8px;
+}
+
+.signature-input-box {
+  margin-bottom: 14px;
+}
+.signature-input-box h4 {
+  font-size: 0.78rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.signature-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.tab-btn.active {
+  background-color: var(--primary);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
+
+canvas {
+  background-color: #ffffff;
+  border-radius: 4px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+input[type="file"] {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Right Live Preview Panel */
+.preview-panel {
+  flex: 1;
+  background-color: #080c14;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+}
+
+.preview-bar {
+  width: 100%;
+  max-width: 210mm;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.preview-badge {
+  background-color: rgba(56, 189, 248, 0.1);
+  color: var(--primary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.a4-wrapper {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+   EXACT A4 PRINT DOCUMENT SPECIFICATION (Matching Word Doc & PDF)
+   ========================================================================== */
+.a4-document {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 12mm 14mm 14mm 14mm;
+  background-color: #ffffff;
+  color: #000000;
+  font-size: 11pt;
+  line-height: 1.3;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Document Header */
+.doc-header {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.doc-header .company-name {
+  font-size: 16.5pt;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  color: #000000;
+  margin-bottom: 2px;
+}
+
+.doc-header .company-address,
+.doc-header .company-contact,
+.doc-header .company-email {
+  font-size: 9pt;
+  color: #000000;
+  line-height: 1.35;
+}
+
+.doc-header .company-email a {
+  color: #0000ff;
+  text-decoration: underline;
+}
+
+/* Title */
+.report-title {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: bold;
+  margin: 10px 0 8px 0;
+  letter-spacing: 0.5px;
+}
+
+/* Tables */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+  font-size: 10.5pt;
+}
+
+.report-table th,
+.report-table td {
+  border: 1px solid #000000;
+  padding: 3px 6px;
+  vertical-align: top;
+}
+
+/* Customer Details Table */
+.cust-table th.th-cust-title {
+  text-align: left;
+  width: 58%;
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+.cust-table th.th-date-title {
+  text-align: right;
+  width: 42%;
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+.cust-table td.col-left {
+  width: 58%;
+}
+
+.cust-table td.col-right {
+  width: 42%;
+}
+
+.cust-table .lbl {
+  font-size: 10.5pt;
+  color: #000000;
+}
+
+.cust-table .val-bold {
+  font-weight: bold;
+  font-size: 10.5pt;
+  margin-top: 1px;
+}
+
+.cust-table .val {
+  font-size: 10pt;
+}
+
+.cust-table .lbl-inline {
+  font-size: 10.5pt;
+}
+
+.cust-table .val-inline {
+  font-size: 10.5pt;
+  margin-left: 4px;
+}
+
+/* Instrument Table */
+.inst-table th.th-center {
+  text-align: center;
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+.inst-table .cell-label {
+  width: 160px;
+  font-size: 10.5pt;
+}
+
+.inst-table .cell-val-bold {
+  font-weight: bold;
+  font-size: 10.5pt;
+}
+
+.inst-table .cell-val {
+  font-size: 10.5pt;
+}
+
+/* Service Details Block */
+.service-block {
+  border: 1px solid #000000;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+}
+
+.service-block .block-title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 11pt;
+  margin-bottom: 10px;
+}
+
+.service-checkboxes-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11pt;
+  margin-bottom: 10px;
+  padding: 0 10px;
+}
+
+.chk-item {
+  display: inline-flex;
+  align-items: center;
+}
+
+.chk-box {
+  font-size: 13pt;
+  line-height: 1;
+  font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+  margin-right: 4px;
+}
+
+.service-chargeable-row {
+  font-size: 11pt;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+}
+
+.underline-amount {
+  text-decoration: underline;
+  margin-left: 4px;
+}
+
+/* Regards Block */
+.regards-block {
+  border: 1px solid #000000;
+  padding: 4px 6px;
+  margin-bottom: 8px;
+}
+
+.nested-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nested-table td {
+  border: none;
+  padding: 2px 4px;
+}
+
+.td-regards-lbl {
+  font-weight: bold;
+  font-size: 11pt;
+  width: 140px;
+}
+
+.td-regards-val {
+  font-size: 10.5pt;
+}
+
+/* Action Taken Block */
+.action-block {
+  border: 1px solid #000000;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  min-height: 220px;
+}
+
+.block-subheading {
+  font-weight: bold;
+  font-size: 11pt;
+  margin-bottom: 6px;
+}
+
+.action-content {
+  font-size: 10.5pt;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  text-align: justify;
+}
+
+/* Customer Remark Block */
+.remark-block {
+  border: 1px solid #000000;
+  padding: 6px 10px;
+  margin-bottom: 14px;
+  min-height: 90px;
+}
+
+.remark-content {
+  font-size: 10pt;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+/* Signatures Grid */
+.signature-section-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #000000;
+  min-height: 110px;
+}
+
+.sig-box {
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sig-left {
+  border-right: 1px solid #000000;
+}
+
+.sig-top-label {
+  font-size: 10pt;
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.sig-bottom-label {
+  font-size: 10pt;
+  margin-top: auto;
+}
+
+.sig-image-container {
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sig-image-container img {
+  max-height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* ==========================================================================
+   PRINT MEDIA RULES
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: hidden;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block !important;
+    min-height: auto !important;
+  }
+
+  .preview-panel {
+    padding: 0 !important;
+    background: none !important;
+    overflow: visible !important;
+  }
+
+  .a4-wrapper {
+    box-shadow: none !important;
+  }
+
+  .a4-document {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    padding: 12mm 14mm 14mm 14mm !important;
+    box-sizing: border-box !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+}
